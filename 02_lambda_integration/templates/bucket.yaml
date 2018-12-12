@@ -1,0 +1,16 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 02-toh-lambda_integration-api-bucket
+
+Resources:
+  DeploymentBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      VersioningConfiguration:
+        Status: Enabled
+
+Outputs:
+  BucketName:
+    Value: !Ref DeploymentBucket
+  BucketArn:
+    Value: !GetAtt DeploymentBucket.Arn

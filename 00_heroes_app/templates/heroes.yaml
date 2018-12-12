@@ -1,0 +1,43 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: heroes-website
+
+Resources:
+  DeployBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      WebsiteConfiguration:
+        IndexDocument: index.html
+        ErrorDocument: error.html
+
+  DeployBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref DeployBucket
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: PublicReadForGetBucketObjects
+            Effect: Allow
+            Principal: "*"
+            Action:
+              - "s3:GetObject"
+            Resource: !Sub arn:aws:s3:::${DeployBucket}/*
+
+Outputs:
+  DeployBucket:
+    Description: S3 bucket name
+    Value: !Ref DeployBucket
+  DeployBucketDomainName:
+    Description: S3 Bucket Domain Name
+    Value: !GetAtt DeployBucket.DomainName
+  DeployBucketUrl:
+    Description: Url of the s3 bucket holding website content
+    Value: !Sub http://${DeployBucket.DomainName}
+  DeployBucketUrlSecure:
+    Description: Url of the s3 bucket holding website content
+    Value: !Sub https://${DeployBucket.DomainName}
+  BucketWebsiteUrl:
+    Description: Url for the s3 website hosted on S3
+    Value: !GetAtt DeployBucket.WebsiteURL

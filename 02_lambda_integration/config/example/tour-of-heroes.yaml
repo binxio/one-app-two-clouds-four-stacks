@@ -1,0 +1,16 @@
+template_path: templates/tour-of-heroes.yaml
+dependencies:
+  - example/bucket
+parameters:
+  S3Bucket: !stack_output bucket::BucketName
+  S3Key: lambda.zip
+  S3Version: !s3_version bucket::BucketName/lambda.zip
+sceptre_user_data:
+  S3_Bucket: !stack_output bucket::BucketName
+  S3_Key: lambda.zip
+  S3_Version: !s3_version bucket::BucketName/lambda.zip
+hooks:
+  before_create:
+    - !s3_upload_file dist/lambda.zip lambda.zip bucket::BucketName
+  before_update:
+    - !s3_upload_file dist/lambda.zip lambda.zip bucket::BucketName

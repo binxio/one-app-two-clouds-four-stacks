@@ -1,0 +1,130 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 02-toh-lambda_integration-api
+Parameters:
+  S3Bucket:
+    Type: String
+  S3Key:
+    Type: String
+  S3Version:
+    Type: String
+
+Resources:
+  APIGatewayRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: apigateway.amazonaws.com
+          Action: sts:AssumeRole
+          Condition: {}
+      Path: /
+      Policies:
+      - PolicyName: ApiGateway
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - lambda:InvokeFunction
+            Resource:
+            - '*'
+
+  LambdaBasicExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+          Condition: {}
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AWSXrayFullAccess
+      - arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
+
+  HeroesHandler:
+    Type: AWS::Lambda::Function
+    Properties:
+      Description: Service for returning the version and build date of the API
+      Handler: heroes.handler
+      Runtime: python3.7
+      Role: !GetAtt 'LambdaBasicExecutionRole.Arn'
+      MemorySize: 128
+      Timeout: 30
+      Code:
+        S3Bucket: !Ref S3Bucket
+        S3Key: !Ref S3Key
+        S3ObjectVersion: !Ref S3Version
+
+  HeroesHandlerLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${HeroesHandler}'
+      RetentionInDays: 30
+
+  HeroesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: heroes
+      AttributeDefinitions:
+      - AttributeName: id
+        AttributeType: S
+      KeySchema:
+      - AttributeName: id
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  RestAPIDeployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId: !Ref RestAPIv1
+      StageName: prod
+
+  RestAPIv1:
+    Type: AWS::ApiGateway::RestApi
+    Properties:
+      EndpointConfiguration:
+        Types:
+        - REGIONAL
+
+
+      Body:
+        swagger: '2.0'
+        info:
+          description: Tour of Heroes API
+          title: Tour Of Heroes
+          version: 1.0.0
+        schemes:
+        - https
+        paths:
+          /{proxy+}:
+            x-amazon-apigateway-any-method:
+              description: ''
+              consumes:
+              - application/json
+              produces:
+              - application/json
+              parameters:
+              - name: proxy
+                in: path
+                required: true
+                type: string
+              responses: {}
+              x-amazon-apigateway-integration:
+                responses: {}
+                uri: !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${HeroesHandler.Arn}/invocations
+                credentials: !GetAtt APIGatewayRole.Arn
+                passthroughBehavior: when_no_match
+                httpMethod: POST
+                type: aws_proxy
+Outputs:
+  ServiceEndpoint:
+    Description: API Endpoint
+    Value: !Sub https://${RestAPIv1}.execute-api.${AWS::Region}.${AWS::URLSuffix}/prod

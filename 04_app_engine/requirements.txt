@@ -1,0 +1,3 @@
+flask
+flask-cors
+google-cloud-datastore==1.7.1
