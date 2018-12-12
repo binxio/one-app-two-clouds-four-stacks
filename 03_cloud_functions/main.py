@@ -1,70 +1,51 @@
 from flask import request, jsonify, Request
+from google.cloud import datastore
 import re
 import sys
 import os
 
-heroes = [
-    {
-        'id': "1",
-        'name': 'superman'
-    },
-    {
-        'id': "2",
-        'name': 'batman'
-    },
-    {
-        'id': "3",
-        'name': 'spiderman'
-    },
-    {
-        'id': "4",
-        'name': 'ironman'
-    }
-]
+client = datastore.Client()
 
 
 def get_heroes():
-    global heroes
-    return heroes, 200
+    query = client.query(kind='Hero')
+    return list(query.fetch()), 200
 
 
 def post_hero(hero: dict):
-    global heroes
-    heroes.append(hero)
-    return heroes, 200
+    key = client.key('Hero', hero['id'])
+    hero_entity = datastore.Entity(key)
+    hero_entity.update(hero)
+    client.put(hero_entity)
+    return hero_entity, 200
 
 
 def update_hero(hero: dict):
-    global heroes
-    heroes.append(hero)
-    return heroes, 200
+    key = client.key('Hero', hero['id'])
+    hero_entity = datastore.Entity(key)
+    hero_entity.update(hero)
+    client.put(hero_entity)
+    return hero_entity, 200
 
 
 def delete_hero_by_id(id):
-    global heroes
-    xs = []
-    for hero in heroes:
-        if hero['id'] != id:
-            xs.append(hero)
-    heroes = xs
-    return heroes, 200
+    key = client.key('Hero', id)
+    client.delete(key)
+    return '', 200
 
 
 def get_hero_by_id(id):
-    global heroes
-    for hero in heroes:
-        if hero['id'] == id:
-            return hero, 200
-    return '', 404
+    key = client.key('Hero', id)
+    hero = client.get(key)
+    if hero:
+        return hero, 200
+    else:
+        return '', 404
 
 
 def heroes_by_name(name):
-    global heroes
-    xs = []
-    for hero in heroes:
-        if hero['name'].contains(name):
-            xs.append(hero)
-    return xs, 200
+    query = client.query(kind='Hero')
+    return list(query.fetch()), 200
 
 
 def hero_service(request: Request):
