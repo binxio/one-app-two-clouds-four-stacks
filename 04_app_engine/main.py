@@ -1,86 +1,67 @@
 # [START gae_python37_app]
 from flask import Flask, jsonify, request
 from flask_cors import CORS, cross_origin
+from google.cloud import datastore
 
 app = Flask(__name__)
 CORS(app)
 
-heroes = [
-    {
-        'id': "1",
-        'name': 'superman'
-    },
-    {
-        'id': "2",
-        'name': 'batman'
-    },
-    {
-        'id': "3",
-        'name': 'spiderman'
-    },
-    {
-        'id': "4",
-        'name': 'ironman'
-    }
-]
+client = datastore.Client()
 
 
 @app.route('/api/heroes', methods=['GET'])
 @cross_origin()
 def get_heroes():
-    global heroes
-    return jsonify(heroes), 200
+    query = client.query(kind='Hero')
+    return jsonify(list(query.fetch())), 200
 
 
 @app.route('/api/heroes', methods=['POST'])
 @cross_origin()
 def post_hero():
-    global heroes
     hero = request.json
-    heroes.append(hero)
-    return jsonify(hero), 200
+    key = client.key('Hero', hero['id'])
+    hero_entity = datastore.Entity(key)
+    hero_entity.update(hero)
+    client.put(hero_entity)
+    return jsonify(hero_entity), 200
 
 
 @app.route('/api/heroes', methods=['PUT'])
 @cross_origin()
 def update_hero():
-    global heroes
     hero = request.json
-    heroes.append(hero)
-    return jsonify(hero), 200
+    key = client.key('Hero', hero['id'])
+    hero_entity = datastore.Entity(key)
+    hero_entity.update(hero)
+    client.put(hero_entity)
+    return jsonify(hero_entity), 200
 
 
 @app.route('/api/heroes/<id>', methods=['DELETE'])
 @cross_origin()
 def delete_hero_by_id(id):
-    xs = []
-    global heroes
-    for hero in heroes:
-        if hero['id'] != id:
-            xs.append(hero)
-    heroes = xs
-    return jsonify(heroes), 200
+    key = client.key('Hero', id)
+    client.delete(key)
+    return '', 200
 
 
 @app.route('/api/heroes/<id>', methods=['GET'])
 @cross_origin()
 def get_hero_by_id(id):
-    global heroes
-    for hero in heroes:
-        if hero['id'] == id:
-            return jsonify(hero), 200
-    return jsonify({}), 404
+    key = client.key('Hero', id)
+    hero = client.get(key)
+    if hero:
+        return jsonify(hero), 200
+    else:
+        return jsonify(), 404
 
 
 @app.route('/api/search/<name>', methods=['GET'])
 @cross_origin()
 def search_heroes_by_name(name):
-    global heroes
-    xs = []
-    for hero in heroes:
-        if hero['name'].contains(name):
-            xs.append(hero)
-    return jsonify(xs), 200
+    query = client.query(kind='Hero')
+    return jsonify(list(query.fetch())), 200
 
 
 if __name__ == '__main__':
